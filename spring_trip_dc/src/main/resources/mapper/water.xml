@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper
+	namespace="com.ssafy.trip.water.model.mapper.WaterMapper">
+
+	<resultMap type="waterInfoDto" id="waterInfo">
+		<result column="objt_id" property="objtId" />
+		<result column="wtrplay_plc_nm" property="wtrplayPlcNm" />
+		<result column="ctprvn_nm" property="ctprvnNm" />
+		<result column="sgg_nm" property="sggNm" />
+		<result column="emd_nm" property="emdNm" />
+		<result column="deatil_plcnm" property="detailPlcnm" />
+		<result column="adres" property="adres" />
+		<result column="wtrplay_plc_type" property="wtrplayPlcType" />
+		<result column="equip_co" property="equipCo" />
+		<result column="risk_sign_cnt" property="riskSignCnt" />
+		<result column="humlf_rescuship" property="humlfRescuship" />
+		<result column="rovngns_stands_cnt" property="rovngnsStandsCnt" />
+		<result column="rescue_vest_cnt" property="rescueVestCnt" />
+		<result column="lifebuoy_cnt" property="lifebuoyCnt" />
+		<result column="rescue_rope_cnt" property="rescueRopeCnt" />
+		<result column="rescubng_cnt" property="rescubngCnt" />
+		<result column="etc_cnt" property="etcCnt" />
+		<result column="wtrplay_sec" property="wtrplaySec" />
+		<result column="wtrplay_deep" property="wtrplayDeep" />
+		<result column="wtrplay_deep_avg" property="wtrplayDeepAvg" />
+		<result column="year_visitor" property="yearVisitor" />
+		<result column="acdt_co" property="acdtCo" />
+		<result column="etc_note" property="etcNote" />
+		<result column="longitude" property="longitude" />
+		<result column="latitude" property="latitude" />
+		<result column="management_type" property="managementType" />
+		<result column="manage_at" property="manageAt" />
+		<result column="wtrplay_er" property="wtrplayEr" />
+		<result column="er_sign_co" property="erSignCo" />
+		<result column="mng_dup" property="MngDup" />
+		<result column="safety_act" property="safetyAct" />
+		<result column="review_rating" property="reviewRating" />
+		<result column="review_number" property="reviewNumber" />
+	</resultMap>
+
+	<select id="keywordSearch" parameterType="map"
+		resultMap="waterInfo">
+		SELECT objt_id,
+		replace(wtrplay_plc_nm, #{keyword}, concat(<![CDATA['<b>']]>,#{keyword}, <![CDATA['</b>']]>))
+		as wtrplay_plc_nm,
+		ctprvn_nm,
+		sgg_nm,
+		emd_nm,
+		detail_plcnm,
+		replace(adres, #{keyword}, concat(<![CDATA['<b>']]>,#{keyword}, <![CDATA['</b>']]>))
+		as adres,
+		wtrplay_plc_type,
+		equip_co,
+		risk_sign_cnt,
+		humnlf_rescuship_cnt,
+		rovngns_stands_cnt,
+		rescue_vest_cnt,
+		lifebuoy_cnt,
+		rescue_rope_cnt,
+		rescubng_cnt,
+		etc_cnt,
+		wtrplay_sec,
+		wtrplay_deep,
+		wtrplay_deep_avg,
+		year_visitor,
+		acdt_co,
+		etc_note,
+		longitude,
+		latitude,
+		management_type,
+		manage_at,
+		wtrplay_er,
+		er_sign_co,
+		mng_dup,
+		safety_act,
+		(SELECT AVG(rating) FROM water_reviews WHERE water_id = objt_id) as review_rating,
+		(SELECT COUNT(rating) FROM water_reviews WHERE water_id = objt_id) as review_number 
+		from
+		wtr_play w
+		<where>
+			<include refid="search"></include>
+		</where>
+		limit #{start}, #{listsize}
+	</select>
+
+	<select id="regionSearch" resultMap="waterInfo">
+		select w.*,
+		(SELECT AVG(rating) FROM water_reviews WHERE water_id = objt_id) as review_rating,
+		(SELECT COUNT(rating) FROM water_reviews WHERE water_id = objt_id) as review_number 
+		from wtr_play w
+		<where>
+			<include refid="search"></include>
+		</where>
+		limit #{start}, #{listsize}
+	</select>
+
+	<select id="getTotalWaterCount" parameterType="map"
+		resultType="int">
+		select count(objt_id)
+		from wtr_play w
+		<where>
+			<include refid="search"></include>
+		</where>
+	</select>
+
+		<sql id="search">
+			<if test="searchType == 'keyword'">
+				and (wtrplay_plc_nm
+				like concat('%',#{keyword},'%') or
+				adres
+				like
+				concat('%',#{keyword},'%'))
+			</if>
+	
+			<if test="searchType == 'region'">
+				and w.ctprvn_nm like concat('%',#{sido},'%')
+				<if test="gugun != 0">
+					and sgg_nm like concat('%',#{gugun},'%')
+				</if>
+			</if>
+			<if test="wtrplay_plc_type != ''">
+				and wtrplay_plc_type =#{wtrplayPlcType}
+			</if>
+	
+			
+		</sql>
+
+	<select id="getDetail" parameterType="int"
+		resultMap="waterInfo">
+		select *,
+		(SELECT AVG(rating) FROM water_reviews WHERE water_id = objt_id) as review_rating,
+		(SELECT COUNT(rating) FROM water_reviews WHERE water_id = objt_id) as review_number 
+		from wtr_play
+		where objt_id = #{objtId}
+	</select>
+
+	<resultMap type="sidoDto" id="sido">
+		<result column="sido_code" property="sidoCode" />
+		<result column="sido_name" property="sidoName" />
+	</resultMap>
+
+	<resultMap type="waterGugunDto" id="gugun">
+		
+		<result column="gugun_name" property="gugunName" />
+		
+	</resultMap>
+
+	<select id="listSido" resultMap="sido">
+		select sido_code, sido_name
+		from
+		sido
+	</select>
+
+	<select id="listGugun" resultMap="gugun" parameterType="int">
+		select
+		gugun_name
+		from gugun
+		
+	</select>
+
+	<resultMap type="waterReviewDto" id="review">
+		<result column="id" property="id" />
+		<result column="water_id" property="waterId" />
+		<result column="content" property="content" />
+		<result column="writer" property="writer" />
+		<result column="nickname" property="nickname" />
+		<result column="rating" property="rating" />
+		<result column="first_image" property="firstImage" />
+	</resultMap>
+	
+	<resultMap type="waterReviewImageDto" id="reviewImage">
+		<result column="id" property="id" />
+		<result column="review_id" property="reviewId" />
+		<result column="file_name" property="fileName" />
+	</resultMap>
+
+	<select id="reviewList" parameterType="map" resultMap="review">
+		SELECT
+		R.id,
+		R.content,
+		R.writer,
+		M.nickname,
+		R.rating,
+		P.file_name as first_image
+		FROM water_reviews R
+		LEFT JOIN (
+			SELECT a.id, a.file_name, a.review_id
+			FROM water_review_images a
+			JOIN (
+				SELECT MIN(id) as id, review_id
+				FROM water_review_images
+				GROUP BY review_id
+			) as b ON a.id = b.id
+		) P
+		ON R.id = P.review_id
+		JOIN members M
+		ON R.writer = M.user_id
+		WHERE R.water_id = #{objtId}
+		limit #{start}, #{listsize}
+	</select>
+	
+	<select id="getReviewDetail" parameterType="int" resultMap="review">
+		SELECT r.id, water_id, content, writer, m.nickname, rating
+		FROM water_reviews r
+		JOIN members m
+		ON r.writer = m.user_id
+		WHERE r.id = #{reviewId}
+	</select>
+	
+	<select id="getReviewImages" parameterType="int" resultMap="reviewImage">
+		SELECT id, review_id, file_name 
+		FROM attraction_review_images
+		WHERE review_id = #{reviewId}
+	</select>
+	
+	<insert id="writeReview" parameterType="waterReviewDto">
+		INSERT INTO water_reviews
+		(`water_id`,
+		`content`,
+		`writer`,
+		`rating`)
+		VALUES
+		(#{waterId}, #{content}, #{writer}, #{rating});
+		<selectKey resultType="int" keyProperty="id" order="AFTER">
+			select last_insert_id()
+		</selectKey>
+	</insert>
+	
+	<delete id="deleteReview" parameterType="int">
+		DELETE FROM water_reviews
+		WHERE id = #{reviewId}
+	</delete>
+
+	<insert id="registerImage" parameterType="attractionReviewImageDto">
+		INSERT INTO attraction_review_images
+		(review_id,file_name)
+		VALUES
+		(#{reviewId}, #{fileName});
+	</insert>
+	
+	<select id="pickRandom" resultMap="waterInfo">
+		SELECT * FROM wtr_play
+		ORDER BY RAND()
+		limit 1;
+	</select>
+
+</mapper>

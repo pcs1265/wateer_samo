@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ssafy.trip.board.model.mapper.BoardMapper">
+
+	<resultMap type="boardDto" id="article">
+		<result column="no" property="no" />
+		<result column="writer" property="writer" />
+		<result column="nickname" property="nickname" />
+		<result column="title" property="title" />
+		<result column="content" property="content" />
+		<result column="hits" property="hits" />
+		<result column="write_date" property="writeDate" />
+		<result column="modify_date" property="modifyDate" />
+	</resultMap>
+
+	<resultMap type="boardDto" id="viewArticle" extends="article">
+		<collection property="fileInfos" column="article_no"
+			javaType="list" ofType="fileInfoDto" select="fileInfoList" />
+	</resultMap>
+
+	<resultMap type="fileInfoDto" id="file">
+		<result column="save_folder" property="saveFolder" />
+		<result column="original_file" property="originalFile" />
+		<result column="save_file" property="saveFile" />
+	</resultMap>
+
+	<insert id="writeArticle" parameterType="boardDto">
+		insert into articles (writer, title, content, hits, write_date)
+		values
+		(#{writer}, #{title}, #{content}, 0, now())
+		<selectKey resultType="int" keyProperty="no" order="AFTER">
+			select
+			last_insert_id()
+		</selectKey>
+	</insert>
+
+	<insert id="registerFile" parameterType="boardDto">
+		insert into file_info (article_id, save_folder, original_file,
+		save_file)
+		values
+		<foreach collection="fileInfos" item="fileinfo"
+			separator=" , ">
+			(#{id}, #{fileinfo.saveFolder}, #{fileinfo.originalFile},
+			#{fileinfo.saveFile})
+		</foreach>
+	</insert>
+
+	<sql id="search">
+		<if test="keyword != null and keyword != ''">
+			<if test="keywordType == 'title'">
+				and title like concat('%', #{keyword}, '%')
+			</if>
+			<if test="key != 'title'">
+				and ${keywordType} = #{keyword}
+			</if>
+		</if>
+	</sql>
+
+	<select id="listArticle" parameterType="map" resultMap="article">
+		select no, nickname, writer, title, content, hits, write_date
+		from
+		articles a, members m
+		where a.writer = m.user_id
+		and delete_date is null
+		<include refid="search"></include>
+		order by a.no desc
+		limit #{start}, #{listsize}
+	</select>
+
+	<select id="getTotalArticleCount" parameterType="map"
+		resultType="int">
+		select count(no)
+		from articles a, members m
+
+		<where>
+			a.writer = m.user_id
+			and delete_date is null
+			<include refid="search"></include>
+		</where>
+	</select>
+
+	<select id="getArticle" parameterType="int" resultMap="article">
+		select
+		a.no, a.writer, a.title, a.content, a.hits, a.write_date, m.nickname
+		from articles a, members m
+		where a.writer = m.user_id
+		and a.no = #{no}
+		and delete_date is null
+	</select>
+
+	<select id="fileInfoList" resultMap="file">
+		select save_folder,
+		original_file, save_file
+		from file_info
+		where article_no = #{articleNo}
+	</select>
+
+	<update id="updateHit" parameterType="int">
+		update articles
+		set hits =
+		hits + 1
+		where no = #{no}
+		and delete_date is null
+	</update>
+
+	<update id="modifyArticle" parameterType="boardDto">
+		update articles
+		set
+		title = #{title}, content = #{content}
+		where no = #{no}
+		and delete_date
+		is null
+	</update>
+
+	<delete id="deleteFile" parameterType="int">
+		delete from file_info
+		where id = #{id}
+	</delete>
+
+	<!-- <delete id="deleteArticle" parameterType="int"> delete from articles 
+		where id = #{id} </delete> -->
+
+	<delete id="deleteArticle" parameterType="int">
+		update articles
+		set
+		delete_date = now()
+		where no = #{no}
+		and delete_date is null
+	</delete>
+
+
+	<resultMap type="commentDto" id="comment">
+		<result column="id" property="id" />
+		<result column="article_no" property="articleNo" />
+		<result column="writer" property="writer" />
+		<result column="nickname" property="nickname" />
+		<result column="content" property="content" />
+		<result column="write_date" property="writeDate" />
+		<result column="modify_date" property="modifyDate" />
+	</resultMap>
+
+	<select id="getArticleComments" parameterType="map"
+		resultMap="comment">
+		select id, article_no, nickname, writer, content, write_date
+		from
+		article_comments c, members m
+		where c.writer = m.user_id
+		and
+		c.article_no = #{article_no}
+		and delete_date
+		is null
+		<include refid="search"></include>
+		order by c.id asc
+		limit #{start}, #{listsize}
+	</select>
+
+	<select id="getTotalArticleCommentsCount" parameterType="map"
+		resultType="int">
+		select count(id)
+		from article_comments c
+		<where>
+			article_no = #{article_no}
+			and delete_date is null
+		</where>
+	</select>
+
+	<insert id="writeArticleComment" parameterType="commentDto">
+		insert into article_comments (writer, article_no, content, write_date)
+		values (#{writer}, #{articleNo}, #{content}, now())
+		<selectKey resultType="int" keyProperty="id" order="AFTER">
+			select
+			last_insert_id()
+		</selectKey>
+	</insert>
+
+	<delete id="deleteArticleComment">
+		update article_comments
+		set delete_date = now()
+		where
+		id = #{c_id}
+		and article_no = #{article_no}
+		and delete_date is null
+	</delete>
+
+	<select id="listTopArticle" resultMap="article">
+		select no, nickname,
+		writer, title, content, hits, write_date
+		from articles a, members m
+		where a.writer = m.user_id
+		and delete_date is null
+		AND write_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+		ORDER BY hits DESC
+		LIMIT 5;
+	</select>
+</mapper>

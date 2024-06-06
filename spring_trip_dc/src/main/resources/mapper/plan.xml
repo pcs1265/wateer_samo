@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.plan.model.mapper.PlanMapper">
+
+	<select id="getPlanList" parameterType="String"
+		resultType="com.ssafy.trip.plan.model.dto.PlanInfoDto">
+		SELECT * FROM plans WHERE user_id = #{user_id}
+	</select>
+
+
+	<insert id="addPlan"
+		parameterType="com.ssafy.trip.plan.model.dto.PlanInfoDto">
+
+		INSERT INTO plans(name, user_id) VALUES (#{name},
+		#{user_id})
+
+	</insert>
+
+	<delete id="removePlan"
+		parameterType="com.ssafy.trip.plan.model.dto.PlanInfoDto">
+		DELETE FROM plans WHERE id = #{id}
+	</delete>
+
+	<insert id="addPlanItem"
+		parameterType="com.ssafy.trip.plan.model.dto.PlanInfoDto">
+		INSERT INTO plan_items(name, plan_id, addr, latitude,
+		longitude,
+		description, `order`)
+
+		SELECT
+		#{name}, #{plan_id}, #{addr},
+		#{latitude}, #{longitude}, #{description},
+		COALESCE(MAX(`order`), 0) +
+		1
+		FROM plan_items
+		WHERE plan_id = #{plan_id};
+	</insert>
+
+	<insert id="removePlanItem"
+		parameterType="com.ssafy.trip.plan.model.dto.PlanInfoDto">
+		DELETE FROM plan_items WHERE id = #{id}
+	</insert>
+
+	<select id="getPlanDetail"
+		parameterType="com.ssafy.trip.plan.model.dto.PlanInfoDto"
+		resultType="com.ssafy.trip.plan.model.dto.PlanItemInfoDto">
+		SELECT * FROM plan_items WHERE plan_id = #{id} ORDER BY
+		`order` asc;
+	</select>
+
+	<delete id="deleteAllItems"
+		parameterType="com.ssafy.trip.plan.model.dto.PlanInfoDto">
+		DELETE FROM plan_items WHERE plan_id = #{id}
+	</delete>
+
+	<insert id="saveAllItems">
+		INSERT INTO plan_items(name, plan_id, addr, latitude,
+		longitude, description, `order`)
+		VALUES
+		<foreach collection="list" item="item" separator=",">
+			(#{item.name}, #{item.plan_id}, #{item.addr}, #{item.latitude}, #{item.longitude}, #{item.description}, #{item.order})
+		</foreach>
+	</insert>
+	
+	<select id="getPlan" parameterType="int">
+		SELECT * FROM plans WHERE id = #{id} limit 1;
+	</select>
+</mapper>

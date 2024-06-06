@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.trip.ocean.model.mapper.OceanMapper">
+
+	<resultMap type="khoaObservDto" id="observ">
+		<result column="observ_id" property="id" />
+		<result column="name" property="name" />
+		<result column="latitude" property="latitude" />
+		<result column="longitude" property="longitude" />
+	</resultMap>
+
+	<select id="getKhoaObservList" resultMap="observ">
+		SELECT * FROM
+		khoa_observ;
+	</select>
+
+	<select id="getBeachSidoList">
+		SELECT sido FROM beach WHERE sido != "" GROUP BY
+		sido;
+	</select>
+
+	<resultMap type="beachInfoDto" id="beach">
+		<result column="id" property="id" />
+		<result column="name" property="name" />
+		<result column="parcel_addr" property="parcelAddr" />
+		<result column="road_addr" property="roadAddr" />
+		<result column="sido" property="sidoNm" />
+		<result column="gugun" property="gugunNm" />
+		<result column="latitude" property="lat" />
+		<result column="longitude" property="lon" />
+	</resultMap>
+
+	<select id="getBeachList" parameterType="String"
+		resultMap="beach">
+		SELECT * FROM beach
+		<if test="sidoNM != null">
+			WHERE sido = #{sidoNM}
+		</if>
+	</select>
+
+	<select id="getRandomBeachList" resultMap="beach">
+		SELECT * FROM beach
+		ORDER BY RAND()
+		limit 20;
+	</select>
+
+	<select id="getBeach" parameterType="int" resultMap="beach">
+		SELECT *
+		FROM beach
+		WHERE id = #{id}
+	</select>
+	
+	<select id="pickRandom" resultMap="beach">
+		SELECT * FROM beach
+		ORDER BY RAND()
+		limit 1;
+	</select>
+</mapper>

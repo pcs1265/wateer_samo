@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper
+	namespace="com.ssafy.trip.attraction.model.mapper.AttractionMapper">
+
+	<resultMap type="attractionInfoDto" id="attractionInfo">
+		<result column="content_id" property="contentId" />
+		<result column="content_type_id" property="contentTypeId" />
+		<result column="title" property="title" />
+		<result column="addr1" property="addr1" />
+		<result column="addr2" property="addr2" />
+		<result column="zipcode" property="zipcode" />
+		<result column="tel" property="tel" />
+		<result column="first_image" property="firstImage" />
+		<result column="first_image2" property="firstImage2" />
+		<result column="readcount" property="readcount" />
+		<result column="sido_code" property="sidoCode" />
+		<result column="gugun_code" property="gugunCode" />
+		<result column="latitude" property="latitude" />
+		<result column="longitude" property="longitude" />
+		<result column="mlevel" property="mlevel" />
+		<result column="overview" property="overview" />
+		<result column="review_rating" property="reviewRating" />
+		<result column="review_number" property="reviewNumber" />
+	</resultMap>
+
+	<select id="keywordSearch" parameterType="map"
+		resultMap="attractionInfo">
+		SELECT content_id,
+		content_type_id,
+		replace(i.title, #{keyword}, concat(<![CDATA['<b>']]>,#{keyword}, <![CDATA['</b>']]>))
+		as title,
+		replace(i.addr1, #{keyword}, concat(<![CDATA['<b>']]>,#{keyword}, <![CDATA['</b>']]>))
+		as addr1,
+		addr2,
+		zipcode,
+		tel,
+		first_image,
+		first_image2,
+		readcount,
+		sido_code,
+		gugun_code,
+		latitude,
+		longitude,
+		mlevel,
+		(SELECT AVG(rating) FROM attraction_reviews WHERE attraction_id = content_id) as review_rating,
+		(SELECT COUNT(rating) FROM attraction_reviews WHERE attraction_id = content_id) as review_number 
+		from
+		attraction_info i
+		<where>
+			<include refid="search"></include>
+		</where>
+		limit #{start}, #{listsize}
+	</select>
+
+	<select id="regionSearch" resultMap="attractionInfo">
+		select i.*,
+		(SELECT AVG(rating) FROM attraction_reviews WHERE attraction_id = content_id) as review_rating,
+		(SELECT COUNT(rating) FROM attraction_reviews WHERE attraction_id = content_id) as review_number 
+		from attraction_info i
+		<where>
+			<include refid="search"></include>
+		</where>
+		limit #{start}, #{listsize}
+	</select>
+
+	<select id="getTotalAttractionCount" parameterType="map"
+		resultType="int">
+		select count(content_id)
+		from attraction_info i
+		<where>
+			<include refid="search"></include>
+		</where>
+	</select>
+
+	<sql id="search">
+		<if test="searchType == 'keyword'">
+			and (i.title
+			like concat('%', #{keyword}, '%') or
+			i.addr1
+			like
+			concat('%', #{keyword},'%'))
+		</if>
+
+		<if test="searchType == 'region'">
+			and i.sido_code = #{sido_code}
+			<if test="gugun_code != 0">
+				and i.gugun_code = #{gugun_code}
+			</if>
+		</if>
+
+		<if test="content_type_id != 0">
+			and i.content_type_id = #{content_type_id}
+		</if>
+	</sql>
+
+	<select id="getDetail" parameterType="int"
+		resultMap="attractionInfo">
+		select
+		i.content_id,content_type_id,title,addr1,addr2,zipcode,tel,first_image,first_image2,readcount,sido_code,gugun_code,latitude,longitude,mlevel,
+		d.overview,
+		(SELECT AVG(rating) FROM attraction_reviews WHERE attraction_id = i.content_id) as review_rating,
+		(SELECT COUNT(rating) FROM attraction_reviews WHERE attraction_id = i.content_id) as review_number
+		from attraction_info i
+		JOIN attraction_description d ON
+		i.content_id = d.content_id
+		where i.content_id = #{contentId}
+	</select>
+
+	<resultMap type="sidoDto" id="sido">
+		<result column="sido_code" property="sidoCode" />
+		<result column="sido_name" property="sidoName" />
+	</resultMap>
+
+	<resultMap type="gugunDto" id="gugun">
+		<result column="gugun_code" property="gugunCode" />
+		<result column="gugun_name" property="gugunName" />
+		<result column="sido_code" property="sidoCode" />
+	</resultMap>
+
+	<select id="listSido" resultMap="sido">
+		select sido_code, sido_name
+		from
+		sido
+	</select>
+
+	<select id="listGugun" resultMap="gugun" parameterType="int">
+		select
+		gugun_code, gugun_name, sido_code
+		from gugun
+		where sido_code =
+		#{sidoCode}
+	</select>
+
+	<resultMap type="attractionReviewDto" id="review">
+		<result column="id" property="id" />
+		<result column="attraction_id" property="attractionId" />
+		<result column="content" property="content" />
+		<result column="writer" property="writer" />
+		<result column="nickname" property="nickname" />
+		<result column="rating" property="rating" />
+		<result column="first_image" property="firstImage" />
+	</resultMap>
+	
+	<resultMap type="attractionReviewImageDto" id="reviewImage">
+		<result column="id" property="id" />
+		<result column="review_id" property="reviewId" />
+		<result column="file_name" property="fileName" />
+	</resultMap>
+
+	<select id="reviewList" parameterType="map" resultMap="review">
+		SELECT
+		R.id,
+		R.content,
+		R.writer,
+		M.nickname,
+		R.rating,
+		P.file_name as first_image
+		FROM attraction_reviews R
+		LEFT JOIN (
+			SELECT a.id, a.file_name, a.review_id
+			FROM attraction_review_images a
+			JOIN (
+				SELECT MIN(id) as id, review_id
+				FROM attraction_review_images
+				GROUP BY review_id
+			) as b ON a.id = b.id
+		) P
+		ON R.id = P.review_id
+		JOIN members M
+		ON R.writer = M.user_id
+		WHERE R.attraction_id = #{contentId}
+		limit #{start}, #{listsize}
+	</select>
+	
+	<select id="getReviewDetail" parameterType="int" resultMap="review">
+		SELECT r.id, attraction_id, content, writer, m.nickname, rating
+		FROM attraction_reviews r
+		JOIN members m
+		ON r.writer = m.user_id
+		WHERE r.id = #{reviewId}
+	</select>
+	
+	<select id="getReviewImages" parameterType="int" resultMap="reviewImage">
+		SELECT id, review_id, file_name 
+		FROM attraction_review_images
+		WHERE review_id = #{reviewId}
+	</select>
+	
+	<insert id="writeReview" parameterType="attractionReviewDto">
+		INSERT INTO attraction_reviews
+		(`attraction_id`,
+		`content`,
+		`writer`,
+		`rating`)
+		VALUES
+		(#{attractionId}, #{content}, #{writer}, #{rating});
+		<selectKey resultType="int" keyProperty="id" order="AFTER">
+			select last_insert_id()
+		</selectKey>
+	</insert>
+	
+	<delete id="deleteReview" parameterType="int">
+		DELETE FROM attraction_reviews
+		WHERE id = #{reviewId}
+	</delete>
+
+	<insert id="registerImage" parameterType="attractionReviewImageDto">
+		INSERT INTO attraction_review_images
+		(review_id,file_name)
+		VALUES
+		(#{reviewId}, #{fileName});
+	</insert>
+	
+	<insert id="addWish" parameterType="AttractionWishDto">
+		insert into attraction_wishs
+		(user_id,item_id)
+		values
+		(#{userId},#{itemId})
+	</insert>
+	
+	<delete id="popWish" parameterType="map">
+		delete from attraction_wishs
+		where user_id=#{userId}
+		and item_id=#{itemId}
+	</delete>
+	
+	<select id="viewWishs" resultMap="attractionInfo">
+		select i.*
+		from attraction_wishs w
+		left join attraction_info i
+		on w.item_id=i.content_id
+		where w.user_id=#{userId}
+	</select>
+	
+	<select id="viewWish" resultMap="attractionInfo">
+		select i.*
+		from attraction_wishs w
+		left join attraction_info i
+		on w.item_id=i.content_id
+		where w.user_id=#{userId}
+		and w.item_id=#{itemId}
+	</select>
+	
+	<select id="listPopular"  resultMap="attractionInfo">
+			SELECT i.*,
+			COALESCE((SELECT AVG(rating) FROM attraction_reviews WHERE attraction_id = content_id) , 0) as review_rating,
+			(SELECT COUNT(rating) FROM attraction_reviews WHERE attraction_id = content_id) as review_number 
+			FROM attraction_info i
+	        WHERE first_image != ""
+			ORDER BY review_rating * review_number DESC
+			LIMIT 3
+	</select>
+	
+	<select id="pickRandom"  resultMap="attractionInfo">
+			SELECT i.*,
+			COALESCE((SELECT AVG(rating) FROM attraction_reviews WHERE attraction_id = content_id) , 0) as review_rating,
+			(SELECT COUNT(rating) FROM attraction_reviews WHERE attraction_id = content_id) as review_number 
+			FROM attraction_info i
+	        WHERE first_image != ""
+			ORDER BY RAND()
+			LIMIT 1
+	</select>
+	
+
+</mapper>
